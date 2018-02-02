@@ -1,23 +1,30 @@
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
 
+import edu.princeton.cs.algs4.FlowNetwork;
 import edu.princeton.cs.algs4.In;
 import edu.princeton.cs.algs4.StdOut;
 
 public class BaseballElimination {
 
-  Map<String, Integer> teams;
+  Map<String, Integer> teamsToId;
+  Map<Integer, String> idToTeams;
   int[] wins;
   int[] looses;
   int[] remaining;
   int[][] games;
-  boolean[] isEliminated;
+  boolean[] eliminated;
   // Not sure about this
-  List<String> certificates;
+  Map<Integer, Set<Integer>> certificates;
 
-  // create a baseball division from given filename in format specified below
+  /**
+   * Create a baseball division from given filename in format specified below
+   *
+   * @param filename
+   */
   public BaseballElimination(String filename) {
     if (filename == null) {
       throw new IllegalArgumentException("Filename is null");
@@ -26,14 +33,19 @@ public class BaseballElimination {
     In in = new In(filename);
     int amountTeams = in.readInt();
     // Initialize variables
-    teams = new HashMap<>();
+    teamsToId = new HashMap<>();
+    idToTeams = new HashMap<>();
     wins = new int[amountTeams];
     looses = new int[amountTeams];
     remaining = new int[amountTeams];
     games = new int[amountTeams][amountTeams];
+    certificates = new HashMap<>();
 
     for (int i = 0; i < amountTeams; i++) {
-      teams.put(in.readString(), i);
+      String teamName = in.readString();
+      teamsToId.put(teamName, i);
+      idToTeams.put(i, teamName);
+      certificates.put(i, new TreeSet<>());
       wins[i] = in.readInt();
       looses[i] = in.readInt();
       remaining[i] = in.readInt();
@@ -41,32 +53,60 @@ public class BaseballElimination {
         games[i][j] = in.readInt();
       }
     }
-    isEliminated = new boolean[amountTeams];
-    certificates = new ArrayList<>();
+    eliminated = new boolean[amountTeams];
 
     trivialElimination();
     nonTrivialElimination();
 
   }
 
-  private void nonTrivialElimination() {
-    // TODO Auto-generated method stub
-
+  private void trivialElimination() {
+    for (int x = 0; x < wins.length; x++) {
+      int maxWinsX = wins[x] + remaining[x];
+      for (int i = 0; i < wins.length; i++) {
+        if (x == i) {
+          assert (games[x][i] == 0);
+          continue;
+        }
+        if (maxWinsX < wins[i]) {
+          eliminated[x] = true;
+          certificates.get(x).add(i);
+        }
+      }
+    }
   }
 
-  private void trivialElimination() {
-    // TODO Auto-generated method stub
+  private void nonTrivialElimination() {
+    int numberOfTeams = wins.length;
+    final int gameVertices = ((numberOfTeams - 1)
+        * (numberOfTeams - 2)) / 2;
+    final int totalVertices = gameVertices + numberOfTeams - 1 + 2;
+
+    for (int team = 0; team < numberOfTeams; team++) {
+      // We avoid computing the ones trivialy eliminated
+      if (eliminated[team]) {
+        continue;
+      }
+
+      // We start using their API
+      evaluateMaxFlowFor(team, totalVertices);
+    }
+  }
+
+  private void evaluateMaxFlowFor(int team, int totalVertices) {
+    int idTeam = teamsToId.get(team);
+    FlowNetwork graphFlow = new FlowNetwork(totalVertices);
 
   }
 
   // number of teams
   public int numberOfTeams() {
-    return teams.size();
+    return teamsToId.size();
   }
 
   // all teams
   public Iterable<String> teams() {
-    return new ArrayList<>(teams.keySet());
+    return new ArrayList<>(teamsToId.keySet());
   }
 
   // number of wins for given team
@@ -74,7 +114,16 @@ public class BaseballElimination {
     if (team == null) {
       throw new IllegalArgumentException("Team arg cannot be null");
     }
-    return 0;
+    int id = getTeamId(team);
+
+    return wins[id];
+  }
+
+  private int getTeamId(String team) {
+    if (teamsToId.get(team) == null) {
+      throw new IllegalArgumentException("Team requested doesn't exist");
+    }
+    return teamsToId.get(team);
   }
 
   // number of losses for given team
@@ -82,7 +131,9 @@ public class BaseballElimination {
     if (team == null) {
       throw new IllegalArgumentException("Team arg cannot be null");
     }
-    return 0;
+    int id = getTeamId(team);
+
+    return looses[id];
   }
 
   // number of remaining games for given team
@@ -90,7 +141,9 @@ public class BaseballElimination {
     if (team == null) {
       throw new IllegalArgumentException("Team arg cannot be null");
     }
-    return 0;
+    int id = getTeamId(team);
+
+    return remaining[id];
   }
 
   // number of remaining games between team1 and team2
@@ -98,7 +151,9 @@ public class BaseballElimination {
     if (team1 == null || team2 == null) {
       throw new IllegalArgumentException("Team arg cannot be null");
     }
-    return 0;
+    int id1 = getTeamId(team1);
+    int id2 = getTeamId(team2);
+    return games[id1][id2];
   }
 
   // is given team eliminated?
@@ -106,7 +161,8 @@ public class BaseballElimination {
     if (team == null) {
       throw new IllegalArgumentException("Team arg cannot be null");
     }
-    return false;
+    int id = getTeamId(team);
+    return eliminated[id];
   }
 
   // subset R of teams that eliminates given team; null if not eliminated

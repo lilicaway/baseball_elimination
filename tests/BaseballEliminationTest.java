@@ -1,4 +1,5 @@
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import java.util.Iterator;
 
@@ -53,7 +54,7 @@ public class BaseballEliminationTest {
   public void testTeamsAndDataIsLoaded() throws Exception {
     BaseballElimination be = new BaseballElimination("data/teams10.txt");
 
-    assertEquals(10, be.teams.length);
+    assertEquals(10, be.teamsToId.size());
     assertEquals(10, be.wins.length);
     assertEquals(10, be.looses.length);
     assertEquals(10, be.remaining.length);
@@ -62,7 +63,7 @@ public class BaseballEliminationTest {
     assertEquals(63, be.remaining[0]);
     assertEquals(31, be.wins[8]);
     assertEquals(31, be.looses[9]);
-    assertEquals("Boston", be.teams[1]);
+    // assertEquals("Boston", be.teams.);
 
     // Assert some of the games data
     // Boston - Indiana 0
@@ -92,6 +93,13 @@ public class BaseballEliminationTest {
       it.next();
     }
     assertEquals(10, count);
+  }
+
+  @Test
+  public void testTrivialElim() throws Exception {
+    BaseballElimination be = new BaseballElimination("data/teams4.txt");
+
+    assertTrue(be.isEliminated("Montreal"));
   }
 
 }
