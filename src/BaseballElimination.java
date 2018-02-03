@@ -4,21 +4,23 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 
+import edu.princeton.cs.algs4.FlowEdge;
 import edu.princeton.cs.algs4.FlowNetwork;
+import edu.princeton.cs.algs4.FordFulkerson;
 import edu.princeton.cs.algs4.In;
 import edu.princeton.cs.algs4.StdOut;
 
 public class BaseballElimination {
 
-  Map<String, Integer> teamsToId;
-  Map<Integer, String> idToTeams;
-  int[] wins;
-  int[] looses;
-  int[] remaining;
-  int[][] games;
-  boolean[] eliminated;
-  // Not sure about this
-  Map<Integer, Set<Integer>> certificates;
+  private final Map<String, Integer> teamsToId;
+  private final Map<Integer, String> idToTeams;
+  private final int[] wins;
+  private final int[] looses;
+  private final int[] remaining;
+  private final int[][] games;
+  private final boolean[] eliminated;
+  private final Map<Integer, Set<String>> certificates;
+
 
   /**
    * Create a baseball division from given filename in format specified below
@@ -70,7 +72,7 @@ public class BaseballElimination {
         }
         if (maxWinsX < wins[i]) {
           eliminated[x] = true;
-          certificates.get(x).add(i);
+          certificates.get(x).add(idToTeams.get(i));
         }
       }
     }
@@ -78,25 +80,74 @@ public class BaseballElimination {
 
   private void nonTrivialElimination() {
     int numberOfTeams = wins.length;
-    final int gameVertices = ((numberOfTeams - 1)
-        * (numberOfTeams - 2)) / 2;
-    final int totalVertices = gameVertices + numberOfTeams - 1 + 2;
 
-    for (int team = 0; team < numberOfTeams; team++) {
+    for (int targetTeamId = 0; targetTeamId < numberOfTeams; targetTeamId++) {
       // We avoid computing the ones trivialy eliminated
-      if (eliminated[team]) {
+      if (eliminated[targetTeamId]) {
         continue;
       }
 
       // We start using their API
-      evaluateMaxFlowFor(team, totalVertices);
+      VertexMapper vm = new VertexMapper(numberOfTeams, targetTeamId);
+      FlowNetwork fn = createFlowNetwork(vm);
+      FordFulkerson ff = new FordFulkerson(fn, vm.getSourceVertex(), vm.getTargetVertex());
+      verifyIfTeamIsEliminated(fn, vm);
+
+      // Build certificates
+      for (int i = 0; i < numberOfTeams; i++) {
+        if (i == targetTeamId) {
+          continue;
+        }
+        if (ff.inCut(vm.getTeamVertexForTeam(i))) {
+          certificates.get(targetTeamId).add(idToTeams.get(i));
+        }
+      }
     }
   }
 
-  private void evaluateMaxFlowFor(int team, int totalVertices) {
-    int idTeam = teamsToId.get(team);
-    FlowNetwork graphFlow = new FlowNetwork(totalVertices);
+  private void verifyIfTeamIsEliminated(FlowNetwork fn, VertexMapper vm) {
+    int sourceVertex = vm.getSourceVertex();
+    boolean hasChances = true;
+    for (FlowEdge edgeToGames : fn.adj(sourceVertex)) {
+      if (!isFull(edgeToGames)) {
+        hasChances = false;
+      }
+    }
+    eliminated[vm.getTargetTeamId()] = !hasChances;
+  }
 
+  private boolean isFull(FlowEdge edgeToGames) {
+    return Math.abs(edgeToGames.capacity() - edgeToGames.flow()) < 0.00001;
+  }
+
+
+
+  private FlowNetwork createFlowNetwork(VertexMapper vm) {
+    int numberOfTeams = vm.getNumberOfTeams();
+    int targetTeamId = vm.getTargetTeamId();
+   
+    FlowNetwork fn = new FlowNetwork(vm.getNumberOfVertices());
+
+    for (int i = 0; i < numberOfTeams; i++) {
+      if (i == targetTeamId) {
+        continue;
+      }
+      fn.addEdge(new FlowEdge(vm.getTeamVertexForTeam(i), vm.getTargetVertex(),
+          wins[targetTeamId] + remaining[targetTeamId] - wins[i]));
+      for (int j = i + 1; j < numberOfTeams; j++) {
+        if (j == targetTeamId) {
+          continue;
+        }
+        fn.addEdge(
+            new FlowEdge(vm.getSourceVertex(), vm.getTeamVsTeamVertexFor(i, j), games[i][j]));
+        fn.addEdge(new FlowEdge(vm.getTeamVsTeamVertexFor(i, j), vm.getTeamVertexForTeam(i),
+            Double.POSITIVE_INFINITY));
+        fn.addEdge(new FlowEdge(vm.getTeamVsTeamVertexFor(i, j), vm.getTeamVertexForTeam(j),
+            Double.POSITIVE_INFINITY));
+      }
+    }
+
+    return fn;
   }
 
   // number of teams
@@ -167,25 +218,28 @@ public class BaseballElimination {
 
   // subset R of teams that eliminates given team; null if not eliminated
   public Iterable<String> certificateOfElimination(String team) {
-    if (team == null) {
+    if (team == null || !teamsToId.containsKey(team)) {
       throw new IllegalArgumentException("Team arg cannot be null");
     }
-    return null;
+    Set<String> certs = certificates.get(teamsToId.get(team));
+    if (certs.isEmpty()) {
+      return null;
+    }
+    return certs;
   }
 
   public static void main(String[] args) {
     BaseballElimination division = new BaseballElimination(args[0]);
     for (String team : division.teams()) {
-      StdOut.print(team + " ");
-      // if (division.isEliminated(team)) {
-      // StdOut.print(team + " is eliminated by the subset R = { ");
-      // for (String t : division.certificateOfElimination(team)) {
-      // StdOut.print(t + " ");
-      // }
-      // StdOut.println("}");
-      // } else {
-      // StdOut.println(team + " is not eliminated");
-      // }
+      if (division.isEliminated(team)) {
+        StdOut.print(team + " is eliminated by the subset R = { ");
+        for (String t : division.certificateOfElimination(team)) {
+          StdOut.print(t + " ");
+        }
+        StdOut.println("}");
+      } else {
+        StdOut.println(team + " is not eliminated");
+      }
     }
   }
 

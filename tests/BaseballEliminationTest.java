@@ -5,7 +5,17 @@ import java.util.Iterator;
 
 import org.junit.Test;
 
+
 public class BaseballEliminationTest {
+
+
+  @Test(expected = IllegalArgumentException.class)
+  public void testWrongTeamNameForCerticate() throws Exception {
+    String invalidTeam = "Princeton";
+    BaseballElimination be = new BaseballElimination("data/teams1.txt");
+    be.certificateOfElimination(invalidTeam);
+
+  }
 
   @Test(expected = IllegalArgumentException.class)
   public void testConstructorArgumentIsNull() {
@@ -50,27 +60,27 @@ public class BaseballEliminationTest {
 
   // Checks creates and reads structures correctly
 
-  @Test
-  public void testTeamsAndDataIsLoaded() throws Exception {
-    BaseballElimination be = new BaseballElimination("data/teams10.txt");
-
-    assertEquals(10, be.teamsToId.size());
-    assertEquals(10, be.wins.length);
-    assertEquals(10, be.looses.length);
-    assertEquals(10, be.remaining.length);
-
-    // Actually check on some data
-    assertEquals(63, be.remaining[0]);
-    assertEquals(31, be.wins[8]);
-    assertEquals(31, be.looses[9]);
-    // assertEquals("Boston", be.teams.);
-
-    // Assert some of the games data
-    // Boston - Indiana 0
-    assertEquals(0, be.games[1][9]);
-    // Denver - Atlanta 9
-    assertEquals(9, be.games[5][0]);
-  }
+  // @Test
+  // public void testTeamsAndDataIsLoaded() throws Exception {
+  // BaseballElimination be = new BaseballElimination("data/teams10.txt");
+  //
+  // assertEquals(10, be.teamsToId.size());
+  // assertEquals(10, be.wins.length);
+  // assertEquals(10, be.looses.length);
+  // assertEquals(10, be.remaining.length);
+  //
+  // // Actually check on some data
+  // assertEquals(63, be.remaining[0]);
+  // assertEquals(31, be.wins[8]);
+  // assertEquals(31, be.looses[9]);
+  // // assertEquals("Boston", be.teams.);
+  //
+  // // Assert some of the games data
+  // // Boston - Indiana 0
+  // assertEquals(0, be.games[1][9]);
+  // // Denver - Atlanta 9
+  // assertEquals(9, be.games[5][0]);
+  // }
 
   // How do I test inmutability here?
   // @Test
@@ -81,6 +91,7 @@ public class BaseballEliminationTest {
   //
   // assertNotNull(be.teams()); te = null;
   // }
+
 
   @Test
   public void testTeamsAre10() throws Exception {
